@@ -1,72 +1,68 @@
-# ✏️ Air Drawing System — Production Edition
+# ✏️ Air Drawing System
 
-**Stack:** Python 3.10+ · MediaPipe · PyTorch · OpenCV
+**Stack:** Python 3.10+ · MediaPipe · PyTorch · OpenCV · JavaScript
 
 ## Architecture
 ```
 Camera → HandTracker (MediaPipe) → GestureRecognizer (PyTorch MLP + rules)
-       → ActionDispatcher → Canvas (BGRA vector) → UI (HUD) → Display
+       → ActionDispatcher → Canvas (Vector-based) → HUD Overlay → Display
 ```
 
-## 12 Gestures
-| Pose | Action | | Pose | Action |
-|------|--------|-|------|--------|
-| Index only | Draw | | Thumb only | Undo |
-| Open palm | Erase | | Hang-loose 🤙 | Redo |
-| Peace ✌ | Clear | | Pinky only | Save |
-| Pinch | Colour + | | 3-finger | Brush + |
-| Horns 🤘 | Brush − | | L-shape | Rectangle |
-| Fist/O | Circle | | | |
+## Gestures
+The system uses rule-based logic with a neural fallback. Below are the default mappings:
 
-## Quick Start
+| Action | Python App (Desktop) | Web Edition (Browser) |
+| :--- | :--- | :--- |
+| **Draw** | Index finger only | Index finger only |
+| **Erase** | Open palm (4+ fingers) | Open palm (4+ fingers) |
+| **Clear** | Peace sign (✌) | Peace sign (✌) |
+| **Cycle Color** | Pinch (Thumb+Index) | Pinch (Thumb+Index) |
+| **Undo / Redo** | Thumb / Thumb+Pinky | Thumb / Thumb+Pinky |
+| **Brush Size** | Index+Middle+Ring (±) | Index+Middle+Ring (±) |
+| **Save PNG** | 4 Fingers (no thumb) | 4 Fingers (no thumb) |
+| **Rectangle** | L-shape (Thumb+Index) | Ring + Pinky |
+| **Circle** | Tripod (Thumb+Index+Middle) | Thumb + Index + Middle |
+
+## Quick Start (Desktop)
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-python air_draw.py [--camera 0] [--gpu] [--debug] [--frame-skip 2]
+
+# Run the application
+python air_draw.py
 ```
 
-## Training Pipeline
-```bash
-python utils/collect_data.py          # ≥200 samples per gesture
-python utils/augment_data.py          # 4× dataset (optional)
-python utils/train_model.py --augment --epochs 120
-python utils/evaluate_model.py --save-cm
-python utils/export_onnx.py --verify  # optional ONNX speedup
-```
-
-## Tests
-```bash
-pytest tests/ -v
-```
+## Quick Start (Web)
+Simply open `index.html` in a modern browser. The web edition uses MediaPipe via CDN and does not require a local server for basic use.
 
 ## Project Structure
 ```
-air_drawing/
-├── air_draw.py           Main loop + error handling
-├── config.py             All settings + CLI overrides
-├── logger.py             Logging (console + file)
-├── hand_tracker.py       MediaPipe + tip smoother
-├── gesture_recognizer.py GestureNet (12 classes) + rule fallback
-├── canvas.py             Vector canvas, shapes, undo/redo
-├── ui.py                 HUD, FPS graph, confidence bar
-├── requirements.txt
-├── models/               gesture_net.pt / .onnx
-├── data/                 gesture_data.npz / _aug.npz
-├── saved/                drawing_*.png
-├── logs/                 runtime.log
-├── utils/                collect, train, augment, evaluate, visualize, benchmark, export
-└── tests/                pytest suite (gesture, canvas, tracker)
+.
+├── air_draw.py           # Main Python application
+├── app.js               # Main Web application logic
+├── config.py             # Central configuration system
+├── hand_tracker.py       # MediaPipe wrapper & smoothing
+├── gesture_recognizer.py # GestureNet (MLP) & rule engine
+├── canvas.py             # Vector canvas & shape logic
+├── ui.py                 # HUD & UI rendering
+├── index.html           # Web UI entry point
+├── style.css            # Web styling
+├── requirements.txt      # Python dependencies
+├── models/               # Pre-trained weights (.pt / .onnx)
+├── utils/                # Training & data collection scripts
+└── tests/                # Pytest suite
 ```
 
-## GestureNet
-```
-63 → Linear(128)+BN+ReLU+Dropout → Linear(64)+BN+ReLU+Dropout
-   → Linear(32)+BN+ReLU+Dropout → Linear(12) → softmax → class
-```
-~0.5 ms inference on CPU. Adam + ReduceLROnPlateau + early stopping.
+## Features
+- **Real-time Smoothing**: Robust hand-tracking with jitter reduction.
+- **Auto-Snap**: Freehand strokes can automatically snap to perfect geometric shapes.
+- **Vector Engine**: Supports high-quality undo/redo history.
+- **Dual Engine**: High-performance Python backend and a zero-install Web version.
 
-## Troubleshooting
-| Problem | Fix |
-|---------|-----|
-| Camera not found | --camera 1 or check permissions |
-| Low accuracy | Collect more data + augment + retrain |
-| Low FPS | --frame-skip 2 or --gpu |
+## Training Pipeline
+If you wish to retrain the gesture model:
+```bash
+python utils/collect_data.py   # Collect training samples
+python utils/train_model.py     # Train GestureNet (MLP)
+python utils/export_onnx.py    # (Optional) Export for faster inference
+```
