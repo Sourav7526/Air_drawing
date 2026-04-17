@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Air Drawing – draw in the air using hand gestures tracked by your webcam. No downloads needed.">
+  <title>✏️ Air Drawing – Web Edition</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- Camera permission prompt -->
+    <div id="camera-prompt">
+      <div class="icon">✏️</div>
+      <h2>Air Drawing</h2>
+      <p>Draw in the air using hand gestures. Your webcam is used for real-time hand tracking — nothing is recorded or
+        sent anywhere.</p>
+      <button id="start-btn">Enable Camera &amp; Start</button>
+      <p id="camera-error">Camera access denied. Please allow camera permissions and try again.</p>
+    </div>
+
+    <!-- Loading screen -->
+    <div id="loading">
+      <div class="spinner"></div>
+      <p>Loading MediaPipe hand tracking…</p>
+    </div>
+
+    <!-- Canvas stack -->
+    <div class="canvas-stack" id="canvas-stack" style="display:none;">
+      <video id="webcam" autoplay playsinline></video>
+      <canvas id="overlay"></canvas>
+      <canvas id="drawing"></canvas>
+    </div>
+
+    <!-- Color palette bar -->
+    <div id="palette-bar" class="glass-panel" style="display:none;">
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Info panel (bottom-left) -->
+    <div id="info-panel" class="glass-panel" style="display:none;">
+      <div class="label">Gesture</div>
+      <div class="value accent" id="gesture-label">Idle</div>
+      <div class="confidence-bar">
+        <div class="confidence-bar-fill" id="conf-fill"></div>
+      </div>
+      <div class="label">Brush</div>
+      <div class="value" id="brush-info">6px</div>
+      <div class="label">Mode</div>
+      <div class="value" id="mode-info">Freehand</div>
+    </div>
+
+    <!-- Toolbar (right) -->
+    <div id="toolbar" class="glass-panel" style="display:none;">
+      <button class="tool-btn active" id="btn-freehand" data-mode="freehand" title="Freehand (F)">
+        ✏️<span class="tooltip">Freehand (F)</span>
+      </button>
+      <button class="tool-btn" id="btn-rect" data-mode="rectangle" title="Rectangle (X)">
+        ▭<span class="tooltip">Rectangle (X)</span>
+      </button>
+      <button class="tool-btn" id="btn-circle" data-mode="circle" title="Circle (C)">
+        ○<span class="tooltip">Circle (C)</span>
+      </button>
+      <div class="tool-divider"></div>
+      <button class="tool-btn" id="btn-undo" title="Undo (U)">
+        ↩<span class="tooltip">Undo (U)</span>
+      </button>
+      <button class="tool-btn" id="btn-redo" title="Redo (R)">
+        ↪<span class="tooltip">Redo (R)</span>
+      </button>
+      <div class="tool-divider"></div>
+      <button class="tool-btn" id="btn-brush-up" title="Brush + (=)">
+        ＋<span class="tooltip">Brush + (=)</span>
+      </button>
+      <button class="tool-btn" id="btn-brush-down" title="Brush − (-)">
+        ﹣<span class="tooltip">Brush − (−)</span>
+      </button>
+      <div class="tool-divider"></div>
+      <button class="tool-btn" id="btn-clear" title="Clear Canvas">
+        🗑<span class="tooltip">Clear Canvas</span>
+      </button>
+      <button class="tool-btn" id="btn-save" title="Save PNG (S)">
+        💾<span class="tooltip">Save PNG (S)</span>
+      </button>
+      <button class="tool-btn" id="btn-help" title="Help (H)">
+        ?<span class="tooltip">Help (H)</span>
+      </button>
+    </div>
+
+    <!-- FPS badge -->
+    <div id="fps-badge" class="glass-panel" style="display:none;">FPS 0</div>
+
+    <!-- Status toast -->
+    <div id="status-toast" class="glass-panel"></div>
+
+    <!-- Help panel -->
+    <div id="help-panel" class="glass-panel">
+      <button id="help-close">&times;</button>
+      <h2>✏️ Air Drawing — Help</h2>
+
+      <h3>Hand Gestures</h3>
+      <div class="help-row"><span class="gesture">☞ Index finger only</span><span class="action">Draw</span></div>
+      <div class="help-row"><span class="gesture">☞ Open palm (4+ fingers)</span><span class="action">Erase</span></div>
+      <div class="help-row"><span class="gesture">☞ Peace sign ✌</span><span class="action">Clear canvas</span></div>
+      <div class="help-row"><span class="gesture">☞ Pinch (thumb+index close)</span><span class="action">Cycle
+          color</span></div>
+      <div class="help-row"><span class="gesture">☞ Thumb only</span><span class="action">Undo</span></div>
+      <div class="help-row"><span class="gesture">☞ Thumb + Pinky 🤙</span><span class="action">Redo</span></div>
+      <div class="help-row"><span class="gesture">☞ 4 fingers (no thumb)</span><span class="action">Save drawing</span>
+      </div>
+      <div class="help-row"><span class="gesture">☞ Index + Middle + Ring</span><span class="action">Brush size +</span>
+      </div>
+      <div class="help-row"><span class="gesture">☞ Index + Pinky</span><span class="action">Brush size −</span></div>
+      <div class="help-row"><span class="gesture">☞ Ring + Pinky</span><span class="action">Rectangle mode</span></div>
+      <div class="help-row"><span class="gesture">☞ Thumb + Index + Middle</span><span class="action">Circle mode</span>
+      </div>
+
+      <h3>Keyboard Shortcuts</h3>
+      <div class="help-row"><span class="gesture">S</span><span class="action">Save PNG</span></div>
+      <div class="help-row"><span class="gesture">H</span><span class="action">Toggle help</span></div>
+      <div class="help-row"><span class="gesture">+ / −</span><span class="action">Brush size</span></div>
+      <div class="help-row"><span class="gesture">[ / ]</span><span class="action">Eraser size</span></div>
+      <div class="help-row"><span class="gesture">U / R</span><span class="action">Undo / Redo</span></div>
+      <div class="help-row"><span class="gesture">1-8</span><span class="action">Select color</span></div>
+      <div class="help-row"><span class="gesture">F / X / C</span><span class="action">Freehand / Rectangle /
+          Circle</span></div>
+    </div>
+  </div>
+
+  <!-- MediaPipe dependencies via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
